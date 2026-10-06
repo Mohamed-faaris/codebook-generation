@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { CodebookModel } from '@fiducial/core';
 import { CodebookSerializer } from '@fiducial/serialization';
-import { PrintSheetRenderer, SVGMarkerRenderer } from '@fiducial/renderer';
+import {
+  PrintSheetRenderer,
+  SVGMarkerRenderer,
+  MosaicRenderer,
+  CalibrationBoardRenderer,
+} from '@fiducial/renderer';
 import {
   Download,
   Copy,
@@ -11,6 +16,8 @@ import {
   Printer,
   Code2,
   FileJson,
+  Grid,
+  Crosshair,
 } from 'lucide-react';
 
 interface ExportTabProps {
@@ -19,7 +26,9 @@ interface ExportTabProps {
 
 export const ExportTab: React.FC<ExportTabProps> = ({ codebook }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'json' | 'python' | 'apriltag_c' | 'c_header' | 'csv' | 'print'>('json');
+  const [activeTab, setActiveTab] = useState<
+    'json' | 'python' | 'apriltag_c' | 'c_header' | 'csv' | 'mosaic' | 'aprilcal' | 'print'
+  >('json');
 
   const jsonContent = JSON.stringify(CodebookSerializer.toJson(codebook), null, 2);
   const pythonContent = CodebookSerializer.toPython(codebook);
@@ -100,6 +109,20 @@ export const ExportTab: React.FC<ExportTabProps> = ({ codebook }) => {
             onClick={() => setActiveTab('csv')}
           >
             <FileSpreadsheet size={16} /> CSV Code Table
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'mosaic' ? 'active' : ''}`}
+            style={{ width: '100%', justifyContent: 'flex-start' }}
+            onClick={() => setActiveTab('mosaic')}
+          >
+            <Grid size={16} color="var(--accent-emerald)" /> Family Mosaic Image (SVG)
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'aprilcal' ? 'active' : ''}`}
+            style={{ width: '100%', justifyContent: 'flex-start' }}
+            onClick={() => setActiveTab('aprilcal')}
+          >
+            <Crosshair size={16} color="var(--accent-amber)" /> AprilCal Calibration Target
           </button>
           <button
             className={`tab-btn ${activeTab === 'print' ? 'active' : ''}`}
@@ -320,6 +343,92 @@ export const ExportTab: React.FC<ExportTabProps> = ({ codebook }) => {
             </pre>
           </div>
         )}
+
+        {activeTab === 'mosaic' && (
+          <div>
+            <div className="card-header">
+              <div className="card-title">
+                <Grid size={18} color="var(--accent-emerald)" />
+                Family Mosaic Overview (apriltag-imgs format)
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    const mosaicSvg = MosaicRenderer.renderMosaicSvg(codebook);
+                    handleDownload(mosaicSvg, `${codebook.metadata.name.toLowerCase().replace(/\s+/g, '_')}_mosaic.svg`, 'image/svg+xml');
+                  }}
+                >
+                  <Download size={14} /> Download Mosaic SVG
+                </button>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              Official AprilTag family mosaic format displaying all {codebook.count} markers with IDs and hex codes.
+            </p>
+            <div
+              style={{
+                background: '#0f172a',
+                padding: '1rem',
+                borderRadius: 'var(--radius-md)',
+                maxHeight: '480px',
+                overflow: 'auto',
+                display: 'flex',
+                justifyContent: 'center',
+              }}
+              dangerouslySetInnerHTML={{ __html: MosaicRenderer.renderMosaicSvg(codebook) }}
+            />
+          </div>
+        )}
+
+        {activeTab === 'aprilcal' && (() => {
+          const calib = CalibrationBoardRenderer.renderCalibrationBoard(codebook);
+          return (
+            <div>
+              <div className="card-header">
+                <div className="card-title">
+                  <Crosshair size={18} color="var(--accent-amber)" />
+                  AprilCal Camera Calibration Target (Richardson & Olson 2013)
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleCopy(calib.targetYaml, 'calib_yaml')}
+                  >
+                    {copiedKey === 'calib_yaml' ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
+                    {copiedKey === 'calib_yaml' ? 'Copied YAML!' : 'Copy YAML'}
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleDownload(calib.targetYaml, 'calibration_target.yaml', 'text/yaml')}
+                  >
+                    <Download size={14} /> Download YAML
+                  </button>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => handleDownload(calib.svg, 'calibration_board.svg', 'image/svg+xml')}
+                  >
+                    <Download size={14} /> Download Board SVG
+                  </button>
+                </div>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                Planar multi-tag calibration target with known metric coordinates and 100mm verification ruler for OpenCV and AprilCal camera calibration pipelines. Board Dimensions: {calib.boardWidthMm} mm × {calib.boardHeightMm} mm ({calib.totalTags} tags).
+              </p>
+              <div
+                style={{
+                  background: '#ffffff',
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-md)',
+                  maxHeight: '450px',
+                  overflow: 'auto',
+                  border: '1px solid var(--border-subtle)',
+                }}
+                dangerouslySetInnerHTML={{ __html: calib.svg }}
+              />
+            </div>
+          );
+        })()}
 
         {activeTab === 'print' && (
           <div>

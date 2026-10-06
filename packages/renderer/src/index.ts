@@ -383,3 +383,190 @@ export class PrintSheetRenderer {
 </html>`;
   }
 }
+
+/**
+ * Mosaic Renderer (Official AprilTag Distribution Format: apriltag-imgs mosaic)
+ * Generates a unified reference mosaic containing every tag in the codebook.
+ */
+export class MosaicRenderer {
+  static renderMosaicSvg(
+    codebook: CodebookModel,
+    columns: number = 6,
+    markerCellSizePx: number = 18
+  ): string {
+    const K = codebook.count;
+    const cols = Math.min(columns, K);
+    const rows = Math.ceil(K / cols);
+
+    const singleMarkerUnits = codebook.geometry.cols + (codebook.border.widthInCells + codebook.border.quietZoneInCells) * 2;
+    const tagSizePx = singleMarkerUnits * markerCellSizePx;
+    const cardPaddingPx = 16;
+    const labelHeightPx = 22;
+
+    const cellWidthPx = tagSizePx + cardPaddingPx * 2;
+    const cellHeightPx = tagSizePx + cardPaddingPx * 2 + labelHeightPx;
+
+    const totalWidthPx = cols * cellWidthPx;
+    const totalHeightPx = rows * cellHeightPx + 40; // top title bar
+
+    const items: string[] = [];
+
+    // Header background
+    items.push(`<rect width="${totalWidthPx}" height="${totalHeightPx}" fill="#0f172a" />`);
+    items.push(
+      `<text x="${totalWidthPx / 2}" y="28" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="16" font-weight="bold" fill="#f8fafc" text-anchor="middle">${codebook.metadata.name} - Complete Family Mosaic (${K} Tags, d_min=${codebook.distanceAnalysis.minDistance})</text>`
+    );
+
+    for (let idx = 0; idx < K; idx++) {
+      const r = Math.floor(idx / cols);
+      const c = idx % cols;
+      const x = c * cellWidthPx;
+      const y = 40 + r * cellHeightPx;
+
+      const code = codebook.codes[idx];
+      const tagSvgRaw = SVGMarkerRenderer.renderFromCode(code, codebook.geometry, codebook.border, {
+        cellSizePx: markerCellSizePx,
+        showOrientationIndicator: false,
+      });
+
+      // Extract inner elements of tag SVG
+      const innerSvg = tagSvgRaw.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+
+      items.push(`
+        <g transform="translate(${x + cardPaddingPx}, ${y + cardPaddingPx})">
+          <rect x="-4" y="-4" width="${tagSizePx + 8}" height="${tagSizePx + labelHeightPx + 8}" fill="#1e293b" rx="6" stroke="#334155" stroke-width="1" />
+          <g transform="translate(0, 0)">${innerSvg}</g>
+          <text x="${tagSizePx / 2}" y="${tagSizePx + 16}" font-family="monospace" font-size="11" font-weight="bold" fill="#38bdf8" text-anchor="middle">ID #${idx} (${code.toHexString()})</text>
+        </g>
+      `);
+    }
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalWidthPx} ${totalHeightPx}" width="${totalWidthPx}" height="${totalHeightPx}">${items.join('')}</svg>`;
+  }
+}
+
+/**
+ * Camera Calibration Target Board Generator (AprilCal Architecture - Richardson & Olson, IROS 2013)
+ * Produces accurate planar camera calibration targets with known metric corner coordinates.
+ */
+export class CalibrationBoardRenderer {
+  static renderCalibrationBoard(
+    codebook: CodebookModel,
+    options: {
+      boardRows?: number;
+      boardCols?: number;
+      tagSizeMm?: number;
+      tagSpacingMm?: number;
+    } = {}
+  ): {
+    svg: string;
+    targetYaml: string;
+    totalTags: number;
+    boardWidthMm: number;
+    boardHeightMm: number;
+  } {
+    const bRows = options.boardRows || 4;
+    const bCols = options.boardCols || 6;
+    const tagSizeMm = options.tagSizeMm || 35;
+    const spacingMm = options.tagSpacingMm || 10;
+
+    const totalTags = Math.min(codebook.count, bRows * bCols);
+    const marginMm = 15;
+    const boardWidthMm = marginMm * 2 + bCols * tagSizeMm + (bCols - 1) * spacingMm;
+    const boardHeightMm = marginMm * 2 + bRows * tagSizeMm + (bRows - 1) * spacingMm;
+
+    const scale = 3.7795; // mm to pixels at 96 DPI
+    const boardWidthPx = boardWidthMm * scale;
+    const boardHeightPx = boardHeightMm * scale;
+
+    const elements: string[] = [];
+    elements.push(`<rect width="${boardWidthPx}" height="${boardHeightPx}" fill="#ffffff" />`);
+
+    const cornerCoordsList: Array<{ id: number; corners: Array<{ x: number; y: number; z: number }> }> = [];
+
+    let tagIdx = 0;
+    for (let r = 0; r < bRows; r++) {
+      for (let c = 0; c < bCols; c++) {
+        if (tagIdx >= totalTags) break;
+
+        const posXmm = marginMm + c * (tagSizeMm + spacingMm);
+        const posYmm = marginMm + r * (tagSizeMm + spacingMm);
+
+        const posXPx = posXmm * scale;
+        const posYPx = posYmm * scale;
+        const sizePx = tagSizeMm * scale;
+
+        const code = codebook.codes[tagIdx];
+        const singleTagSvg = SVGMarkerRenderer.renderFromCode(code, codebook.geometry, codebook.border, {
+          cellSizePx: Math.floor(sizePx / (codebook.geometry.cols + 4)),
+          showOrientationIndicator: false,
+        });
+
+        const innerSvg = singleTagSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+        elements.push(`
+          <g transform="translate(${posXPx}, ${posYPx})">
+            ${innerSvg}
+            <text x="${sizePx / 2}" y="${sizePx + 12}" font-family="monospace" font-size="9" fill="#000000" text-anchor="middle">ID:${tagIdx}</text>
+          </g>
+        `);
+
+        // Record 3D planar corner coordinates in millimeters (counter-clockwise from top-left)
+        cornerCoordsList.push({
+          id: tagIdx,
+          corners: [
+            { x: posXmm, y: posYmm, z: 0.0 },
+            { x: posXmm + tagSizeMm, y: posYmm, z: 0.0 },
+            { x: posXmm + tagSizeMm, y: posYmm + tagSizeMm, z: 0.0 },
+            { x: posXmm, y: posYmm + tagSizeMm, z: 0.0 },
+          ],
+        });
+
+        tagIdx++;
+      }
+    }
+
+    // Top calibration check ruler
+    const rulerXPx = marginMm * scale;
+    const rulerYPx = 6 * scale;
+    const rulerWPx = 100 * scale;
+    elements.push(`
+      <g transform="translate(${rulerXPx}, ${rulerYPx})">
+        <rect width="${rulerWPx}" height="4" fill="#000000" />
+        <text x="${rulerWPx + 6}" y="6" font-family="sans-serif" font-size="8" fill="#555555">100 mm Calibration Scale</text>
+      </g>
+    `);
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${boardWidthPx} ${boardHeightPx}" width="${boardWidthPx}" height="${boardHeightPx}">${elements.join('')}</svg>`;
+
+    // Format AprilCal / OpenCV camera calibration YAML
+    const yamlLines = [
+      `# AprilCal Camera Calibration Board Definition`,
+      `# Reference: Richardson & Olson, IROS 2013`,
+      `tag_family: "${codebook.metadata.name}"`,
+      `grid_rows: ${bRows}`,
+      `grid_cols: ${bCols}`,
+      `tag_size_meters: ${(tagSizeMm / 1000).toFixed(4)}`,
+      `tag_spacing_meters: ${(spacingMm / 1000).toFixed(4)}`,
+      `board_width_meters: ${(boardWidthMm / 1000).toFixed(4)}`,
+      `board_height_meters: ${(boardHeightMm / 1000).toFixed(4)}`,
+      `tags:`,
+    ];
+
+    for (const item of cornerCoordsList) {
+      yamlLines.push(`  - id: ${item.id}`);
+      yamlLines.push(`    corners:`);
+      for (const pt of item.corners) {
+        yamlLines.push(`      - [${(pt.x / 1000).toFixed(4)}, ${(pt.y / 1000).toFixed(4)}, 0.0]`);
+      }
+    }
+
+    return {
+      svg,
+      targetYaml: yamlLines.join('\n'),
+      totalTags,
+      boardWidthMm,
+      boardHeightMm,
+    };
+  }
+}
+
