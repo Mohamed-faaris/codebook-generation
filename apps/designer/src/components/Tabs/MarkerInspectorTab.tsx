@@ -3,6 +3,7 @@ import {
   CodebookModel,
   BinaryCode,
   MarkerDecoder,
+  AprilTag2QuickDecoder,
   OrientationEngine,
   ReflectionEngine,
   ErrorCorruptionModel,
@@ -18,6 +19,7 @@ import {
   XCircle,
   RefreshCw,
   Cpu,
+  Zap,
 } from 'lucide-react';
 
 interface MarkerInspectorTabProps {
@@ -28,6 +30,7 @@ export const MarkerInspectorTab: React.FC<MarkerInspectorTabProps> = ({ codebook
   const [selectedId, setSelectedId] = useState(0);
   const [activeCode, setActiveCode] = useState<BinaryCode | null>(null);
   const [flippedIndices, setFlippedIndices] = useState<Set<number>>(new Set());
+  const [useQuickDecoder, setUseQuickDecoder] = useState(true);
 
   // Keep active code synced with selected ID
   useEffect(() => {
@@ -41,6 +44,12 @@ export const MarkerInspectorTab: React.FC<MarkerInspectorTabProps> = ({ codebook
     }
   }, [selectedId, codebook]);
 
+  const geometry = codebook.geometry;
+  const quickDecoder = React.useMemo(() => {
+    if (codebook.codes.length === 0) return null;
+    return new AprilTag2QuickDecoder(geometry, codebook.codes, 2);
+  }, [geometry, codebook.codes]);
+
   if (codebook.codes.length === 0 || !activeCode) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
@@ -50,10 +59,9 @@ export const MarkerInspectorTab: React.FC<MarkerInspectorTabProps> = ({ codebook
   }
 
   const originalCode = codebook.codes[selectedId];
-  const geometry = codebook.geometry;
   const orientationEngine = new OrientationEngine(geometry);
   const reflectionEngine = new ReflectionEngine(geometry);
-  const decoder = new MarkerDecoder(geometry, codebook.codes);
+  const standardDecoder = new MarkerDecoder(geometry, codebook.codes);
   const errorModel = new ErrorCorruptionModel(geometry);
 
   // 4 Rotations
@@ -67,12 +75,14 @@ export const MarkerInspectorTab: React.FC<MarkerInspectorTabProps> = ({ codebook
   const dRefH = originalCode.hammingDistance(refVariants.horizontal);
   const dRefV = originalCode.hammingDistance(refVariants.vertical);
 
-  // Live decoding of the currently inspected/manipulated code
-  const decodeResult = decoder.decode(activeCode, {
-    maxAcceptanceDistance: codebook.distanceAnalysis.errorCorrectionCapability || 2,
-    minAmbiguityMargin: 1,
-    allowReflection: false,
-  });
+  // Live decoding: either AprilTag 2 O(1) Quick Decoder or Standard Linear Scan
+  const decodeResult = useQuickDecoder && quickDecoder
+    ? quickDecoder.decode(activeCode)
+    : standardDecoder.decode(activeCode, {
+        maxAcceptanceDistance: codebook.distanceAnalysis.errorCorrectionCapability || 2,
+        minAmbiguityMargin: 1,
+        allowReflection: false,
+      });
 
   // Current active grid
   const currentGrid = geometry.codeToGrid(activeCode);
@@ -246,7 +256,43 @@ export const MarkerInspectorTab: React.FC<MarkerInspectorTabProps> = ({ codebook
             </div>
 
             {/* Live Observation & Detector Panel */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {/* Decoder Engine Selector */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.4rem 0.75rem',
+                  background: 'var(--bg-tertiary)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                  <Zap size={14} color="var(--accent-cyan)" />
+                  <span>Detection Engine:</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <button
+                    className={`btn btn-sm ${useQuickDecoder ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem' }}
+                    onClick={() => setUseQuickDecoder(true)}
+                    title="AprilTag 2 O(1) Hash Table Decoder (Wang & Olson 2016, Section III-E)"
+                  >
+                    AprilTag 2 O(1) Hash ({quickDecoder ? `${quickDecoder.tableSize.toLocaleString()} states` : 'active'})
+                  </button>
+                  <button
+                    className={`btn btn-sm ${!useQuickDecoder ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem' }}
+                    onClick={() => setUseQuickDecoder(false)}
+                    title="Standard Linear Scanner (O(4N))"
+                  >
+                    Linear Scan O(4N)
+                  </button>
+                </div>
+              </div>
+
               {/* Decoder Status Box */}
               <div
                 style={{

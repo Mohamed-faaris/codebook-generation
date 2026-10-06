@@ -26,6 +26,10 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({
   const [enforceReflection, setEnforceReflection] = useState(false);
   const [enforceBalance, setEnforceBalance] = useState(true);
   const [balanceTolerance, setBalanceTolerance] = useState(15);
+  // AprilTag 2 / Wang & Olson 2016 Minimum Complexity Heuristics
+  const [enforceComplexity, setEnforceComplexity] = useState(true);
+  const [minTransitions, setMinTransitions] = useState(Math.floor(codebook.geometry.totalCells * 0.35));
+  const [maxRunLength, setMaxRunLength] = useState(Math.max(3, Math.ceil(codebook.geometry.cols * 0.6)));
   const [algorithm, setAlgorithm] = useState<OptimizationAlgorithm>('greedy_pruning');
   const [maxIterations, setMaxIterations] = useState(10000);
 
@@ -49,6 +53,7 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({
 
     setLogMessages((prev) => [
       `[${new Date().toLocaleTimeString()}] Starting ${algorithm} search: target K=${targetCount}, d_min=${targetMinDistance}, grid=${codebook.geometry.rows}x${codebook.geometry.cols}`,
+      `[${new Date().toLocaleTimeString()}] AprilTag 2 Complexity Filter: ${enforceComplexity ? `ACTIVE (minTransitions=${minTransitions}, maxRun=${maxRunLength})` : 'OFF'}`,
       ...prev,
     ]);
 
@@ -61,6 +66,9 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({
       enforceReflectionInvariance: enforceReflection,
       enforceCodeBalance: enforceBalance,
       balanceTolerancePercent: balanceTolerance,
+      enforceAprilTag2Complexity: enforceComplexity,
+      minTransitions,
+      maxRunLength,
       maxIterations,
       weights: {
         hammingSeparation: 1.0,
@@ -213,8 +221,52 @@ export const OptimizerTab: React.FC<OptimizerTabProps> = ({
               />
               Enforce Code Balance (0/1 ratio near 50%)
             </label>
+            <label className="form-checkbox">
+              <input
+                type="checkbox"
+                checked={enforceComplexity}
+                onChange={(e) => setEnforceComplexity(e.target.checked)}
+              />
+              <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                AprilTag 2 Complexity Filter (Wang & Olson 2016)
+              </span>
+            </label>
           </div>
         </div>
+
+        {enforceComplexity && (
+          <div className="form-group" style={{ paddingLeft: '1.25rem', borderLeft: '2px solid var(--accent-cyan)', marginBottom: '1.25rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              Rejects low-frequency patterns, solid blocks, and stripes to suppress natural scene false positives.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+              <label className="form-label" style={{ fontSize: '0.7rem' }}>Min Transitions</label>
+              <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>≥ {minTransitions} edges</span>
+            </div>
+            <input
+              type="range"
+              min={2}
+              max={codebook.geometry.totalCells}
+              step={1}
+              style={{ width: '100%', accentColor: 'var(--accent-cyan)', marginBottom: '0.6rem' }}
+              value={minTransitions}
+              onChange={(e) => setMinTransitions(parseInt(e.target.value))}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+              <label className="form-label" style={{ fontSize: '0.7rem' }}>Max Continuous Run-Length</label>
+              <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>≤ {maxRunLength} cells</span>
+            </div>
+            <input
+              type="range"
+              min={2}
+              max={codebook.geometry.cols}
+              step={1}
+              style={{ width: '100%', accentColor: 'var(--accent-cyan)' }}
+              value={maxRunLength}
+              onChange={(e) => setMaxRunLength(parseInt(e.target.value))}
+            />
+          </div>
+        )}
 
         {enforceBalance && (
           <div className="form-group" style={{ paddingLeft: '1.25rem', borderLeft: '2px solid var(--border-subtle)' }}>

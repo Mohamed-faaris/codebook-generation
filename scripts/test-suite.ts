@@ -8,6 +8,8 @@ import {
   HammingAnalyzer,
   CodebookOptimizer,
   MarkerDecoder,
+  AprilTag2QuickDecoder,
+  CodebookAnalyzer,
   CodebookModel,
 } from '../packages/core/src/index.js';
 import { CodebookSerializer } from '../packages/serialization/src/index.js';
@@ -147,7 +149,26 @@ async function runTests() {
   assert(printHtml.includes('Printable Sheet') && printHtml.includes('ruler-100mm'), 'printable HTML output');
   console.log('   ✓ Serialization and rendering engines passed.');
 
-  console.log('\n🎉 ALL 7 SYSTEM VERIFICATION SUITES PASSED PERFECTLY!\n');
+  // 8. AprilTag 2 Specific Enhancements (Wang & Olson IROS 2016)
+  console.log('8. Testing AprilTag 2 O(1) Quick Decoder & FPR Analyzer...');
+  const quickDecoder = new AprilTag2QuickDecoder(geom, optResult.codes, 2);
+  assert(quickDecoder.tableSize > 0, 'quickDecoder populated table');
+
+  const qDecExact = quickDecoder.decode(optResult.codes[0]);
+  assert(qDecExact.status === 'accepted' && qDecExact.matchedId === 0, 'quickDecoder exact match');
+
+  const qDec1 = quickDecoder.decode(corrupt1);
+  assert(qDec1.status === 'accepted' && qDec1.matchedId === 0 && qDec1.observedHammingDistance === 1, 'quickDecoder 1-bit recovery');
+
+  const fprProfiles = CodebookAnalyzer.computeAprilTag2FPRProfiles(25, 4);
+  assert(fprProfiles.length === 3, 'FPR profiles for E=0, 1, 2');
+  assert(fprProfiles[0].theoreticalFPR < fprProfiles[1].theoreticalFPR, 'FPR monotonically increases with E');
+
+  const apriltag2CHeader = CodebookSerializer.toAprilTag2CHeader(model);
+  assert(apriltag2CHeader.includes('apriltag_family_t'), 'apriltag_family_t exported in C header');
+  console.log(`   ✓ AprilTag 2 Quick Decoder (${quickDecoder.tableSize} states) and FPR profiles passed.`);
+
+  console.log('\n🎉 ALL 8 SYSTEM VERIFICATION SUITES PASSED PERFECTLY!\n');
 }
 
 runTests().catch((err) => {

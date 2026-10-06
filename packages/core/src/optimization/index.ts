@@ -79,6 +79,22 @@ export class CodebookOptimizer {
         iterations++;
         const candidate = this.generateCandidate(bitCount, config);
 
+        // 0. AprilTag 2 / Wang & Olson Minimum Complexity Heuristic (reject low-complexity stripes/patches)
+        if (config.enforceAprilTag2Complexity) {
+          const grid = this.geometry.codeToGrid(candidate);
+          const transitions = this.countGridTransitions(grid);
+          const minTrans = config.minTransitions ?? Math.floor(this.geometry.totalCells * 0.35);
+          if (transitions < minTrans) {
+            continue;
+          }
+
+          const maxRun = this.computeMaxRunLength(grid);
+          const allowedRun = config.maxRunLength ?? Math.max(3, Math.ceil(this.geometry.cols * 0.6));
+          if (maxRun > allowedRun) {
+            continue;
+          }
+        }
+
         // 1. Self-rotation check
         if (config.enforceRotationInvariance) {
           const selfRotDist = this.orientationEngine.minSelfRotationDistance(candidate);
@@ -343,5 +359,42 @@ export class CodebookOptimizer {
     }
 
     return BinaryCode.fromBits(bits);
+  }
+
+  private countGridTransitions(grid: number[][]): number {
+    let transitions = 0;
+    const rows = grid.length;
+    const cols = grid[0].length;
+    // Horizontal transitions
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols - 1; c++) {
+        if (grid[r][c] !== grid[r][c + 1]) transitions++;
+      }
+    }
+    // Vertical transitions
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows - 1; r++) {
+        if (grid[r][c] !== grid[r + 1][c]) transitions++;
+      }
+    }
+    return transitions;
+  }
+
+  private computeMaxRunLength(grid: number[][]): number {
+    let maxRun = 1;
+    const rows = grid.length;
+    const cols = grid[0].length;
+    for (let r = 0; r < rows; r++) {
+      let current = 1;
+      for (let c = 0; c < cols - 1; c++) {
+        if (grid[r][c] === grid[r][c + 1]) {
+          current++;
+          if (current > maxRun) maxRun = current;
+        } else {
+          current = 1;
+        }
+      }
+    }
+    return maxRun;
   }
 }

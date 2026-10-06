@@ -19,10 +19,11 @@ interface ExportTabProps {
 
 export const ExportTab: React.FC<ExportTabProps> = ({ codebook }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'json' | 'python' | 'c_header' | 'csv' | 'print'>('json');
+  const [activeTab, setActiveTab] = useState<'json' | 'python' | 'apriltag_c' | 'c_header' | 'csv' | 'print'>('json');
 
   const jsonContent = JSON.stringify(CodebookSerializer.toJson(codebook), null, 2);
   const pythonContent = CodebookSerializer.toPython(codebook);
+  const apriltagCContent = CodebookSerializer.toAprilTag2CHeader(codebook);
   const cHeaderContent = CodebookSerializer.toCHeader(codebook);
   const csvContent = CodebookSerializer.toCsv(codebook);
   const printHtml = PrintSheetRenderer.generatePrintableHtml(codebook);
@@ -77,14 +78,21 @@ export const ExportTab: React.FC<ExportTabProps> = ({ codebook }) => {
             style={{ width: '100%', justifyContent: 'flex-start' }}
             onClick={() => setActiveTab('python')}
           >
-            <FileCode size={16} /> Python / OpenCV Module
+            <FileCode size={16} /> Python / O(1) Quick Decoder
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'apriltag_c' ? 'active' : ''}`}
+            style={{ width: '100%', justifyContent: 'flex-start' }}
+            onClick={() => setActiveTab('apriltag_c')}
+          >
+            <Code2 size={16} color="var(--accent-cyan)" /> AprilTag 2/3 C Library (apriltag_family_t)
           </button>
           <button
             className={`tab-btn ${activeTab === 'c_header' ? 'active' : ''}`}
             style={{ width: '100%', justifyContent: 'flex-start' }}
             onClick={() => setActiveTab('c_header')}
           >
-            <Code2 size={16} /> C / C++ Header
+            <Code2 size={16} /> C / C++ Standalone Header
           </button>
           <button
             className={`tab-btn ${activeTab === 'csv' ? 'active' : ''}`}
@@ -187,6 +195,50 @@ export const ExportTab: React.FC<ExportTabProps> = ({ codebook }) => {
               }}
             >
               {pythonContent}
+            </pre>
+          </div>
+        )}
+
+        {activeTab === 'apriltag_c' && (
+          <div>
+            <div className="card-header">
+              <div className="card-title">
+                <Code2 size={18} color="var(--accent-cyan)" />
+                AprilTag 2 / 3 C Library Integration (apriltag_family_t)
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleCopy(apriltagCContent, 'apriltag_c')}
+                >
+                  {copiedKey === 'apriltag_c' ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
+                  {copiedKey === 'apriltag_c' ? 'Copied!' : 'Copy AprilTag Header'}
+                </button>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() =>
+                    handleDownload(apriltagCContent, `tag${codebook.geometry.rows}x${codebook.geometry.cols}h${codebook.distanceAnalysis.minDistance}.h`, 'text/x-c')
+                  }
+                >
+                  <Download size={14} /> Download tag_family.h
+                </button>
+              </div>
+            </div>
+            <div style={{ padding: '0.5rem 0.85rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.85rem' }}>
+              Standard C structure compatible with <code>apriltag_detector_add_family_bits()</code> in <code>libapriltag</code> (AprilTag 2 &amp; 3).
+            </div>
+            <pre
+              style={{
+                background: 'var(--bg-primary)',
+                padding: '1rem',
+                borderRadius: 'var(--radius-md)',
+                maxHeight: '480px',
+                overflowY: 'auto',
+                fontSize: '0.75rem',
+                color: '#38bdf8',
+              }}
+            >
+              {apriltagCContent}
             </pre>
           </div>
         )}

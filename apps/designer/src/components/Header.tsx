@@ -41,7 +41,9 @@ export const Header: React.FC<HeaderProps> = ({
             onChange={(e) => onSelectPreset(e.target.value as any)}
             defaultValue="apriltag_36h11"
           >
-            <option value="apriltag_36h11">AprilTag 36h11 (6x6)</option>
+            <option value="apriltag_36h11">AprilTag 2 tag36h11 (6x6, d=11)</option>
+            <option value="apriltag2_tag25h9">AprilTag 2 tag25h9 (5x5, d=9)</option>
+            <option value="apriltag2_tag16h5">AprilTag 2 tag16h5 (4x4, d=5)</option>
             <option value="aruco_5x5">ArUco 5x5 Equivalent</option>
             <option value="micro_4x4">Micro-Fiducial 4x4 (Thin)</option>
             <option value="asymmetric_robotics">Robotics Keyed (5x5)</option>

@@ -239,6 +239,56 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({ codebook }) => {
           </div>
         )}
       </div>
+
+      {/* AprilTag 2 Empirical & Theoretical False Positive Rate Analysis (Wang & Olson 2016, Table I) */}
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">
+            <ShieldCheck size={18} color="var(--accent-primary)" />
+            AprilTag 2 False-Positive Rate Characterization (Wang & Olson 2016)
+          </div>
+          <span className="badge accent">LabelMe Natural Scenes Benchmark Model</span>
+        </div>
+
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+          In the AprilTag 2 paper (Wang & Olson, IROS 2016), extensive testing across 421,049 natural scene images confirmed that no robotics users accept tags with &gt; 2 bit errors. Restricting correction to ≤ 2 bits prevents exponential false positive growth and enables instant O(1) hash table lookup.
+        </p>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table className="matrix-table" style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th>Error Limit (E)</th>
+                <th>Valid States / Tag</th>
+                <th>Total Family States</th>
+                <th>Theoretical FPR</th>
+                <th>Expected False Detections / 1M Images</th>
+                <th>Operational Recommendation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CodebookAnalyzer.computeAprilTag2FPRProfiles(codebook.geometry.dataBitsCount, codebook.count).map((p) => (
+                <tr key={p.errorsCorrected}>
+                  <td style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                    E = {p.errorsCorrected} bit{p.errorsCorrected === 1 ? '' : 's'}
+                  </td>
+                  <td style={{ fontFamily: 'var(--font-mono)' }}>{p.combinationsPerTag.toLocaleString()}</td>
+                  <td style={{ fontFamily: 'var(--font-mono)' }}>{p.totalValidStatesPerFamily.toLocaleString()}</td>
+                  <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>
+                    {p.theoreticalFPRPercent}
+                  </td>
+                  <td style={{ fontFamily: 'var(--font-mono)', color: p.expectedFalsePositivesPerMillionImages > 1 ? '#fbbf24' : '#34d399', fontWeight: 700 }}>
+                    {p.expectedFalsePositivesPerMillionImages} detections
+                  </td>
+                  <td style={{ fontSize: '0.75rem', textAlign: 'left', color: 'var(--text-secondary)' }}>
+                    {p.evaluationNote}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

@@ -126,6 +126,143 @@ export class MarkerDecoder {
   }
 }
 
+/**
+ * AprilTag 2 O(1) Hash Table Quick Decoder (Wang & Olson, IROS 2016, Section III-E)
+ * Precomputes an O(1) lookup table for up to 2-bit error corrections across all valid codes
+ * and their 4 rotations. Replaces O(4N) linear scanning with instant O(1) hash table lookup.
+ */
+export class AprilTag2QuickDecoder {
+  readonly geometry: MarkerGeometryModel;
+  readonly maxErrors: number;
+  private readonly lookupTable = new Map<
+    string,
+    {
+      id: number;
+      rotation: RotationAngle;
+      distance: number;
+      isAmbiguous: boolean;
+    }
+  >();
+  private readonly _entryCount: number;
+
+  constructor(
+    geometry: MarkerGeometryModel,
+    codebook: BinaryCode[],
+    maxErrors: number = 2
+  ) {
+    this.geometry = geometry;
+    this.maxErrors = maxErrors;
+    const orient = new OrientationEngine(geometry);
+    const bitCount = geometry.dataBitsCount;
+
+    // Build the O(1) lookup table
+    for (let id = 0; id < codebook.length; id++) {
+      const rots = orient.getRotations(codebook[id]);
+      const angleCodes: Array<{ code: BinaryCode; angle: RotationAngle }> = [
+        { code: rots.deg0, angle: 0 },
+        { code: rots.deg90, angle: 90 },
+        { code: rots.deg180, angle: 180 },
+        { code: rots.deg270, angle: 270 },
+      ];
+
+      for (const { code, angle } of angleCodes) {
+        // 0-error entry
+        this.insertEntry(code.toBigInt().toString(), id, angle, 0);
+
+        if (maxErrors >= 1) {
+          // 1-error entries: flip 1 bit
+          for (let i = 0; i < bitCount; i++) {
+            const flipped1 = code.flipBit(i);
+            this.insertEntry(flipped1.toBigInt().toString(), id, angle, 1);
+
+            if (maxErrors >= 2) {
+              // 2-error entries: flip 2 bits
+              for (let j = i + 1; j < bitCount; j++) {
+                const flipped2 = flipped1.flipBit(j);
+                this.insertEntry(flipped2.toBigInt().toString(), id, angle, 2);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    this._entryCount = this.lookupTable.size;
+  }
+
+  get tableSize(): number {
+    return this._entryCount;
+  }
+
+  private insertEntry(key: string, id: number, angle: RotationAngle, dist: number): void {
+    const existing = this.lookupTable.get(key);
+    if (!existing) {
+      this.lookupTable.set(key, { id, rotation: angle, distance: dist, isAmbiguous: false });
+    } else {
+      if (existing.distance > dist) {
+        // Closer distance wins
+        this.lookupTable.set(key, { id, rotation: angle, distance: dist, isAmbiguous: false });
+      } else if (existing.distance === dist && existing.id !== id) {
+        // Tie between two different marker IDs -> mark ambiguous!
+        existing.isAmbiguous = true;
+      }
+    }
+  }
+
+  /**
+   * O(1) instant decode.
+   */
+  decode(observed: BinaryCode): DecodingResult {
+    const start = performance.now();
+    const key = observed.toBigInt().toString();
+    const hit = this.lookupTable.get(key);
+    const lookupTimeUs = Math.round((performance.now() - start) * 1000);
+
+    if (!hit) {
+      return {
+        status: 'rejected',
+        matchedId: null,
+        observedHammingDistance: this.maxErrors + 1,
+        detectedRotation: null,
+        detectedReflection: 'none',
+        runnerUpId: null,
+        runnerUpDistance: null,
+        ambiguityMargin: 0,
+        confidenceScore: 0.0,
+        explanation: `AprilTag 2 Quick Decoder: Pattern not found in O(1) hash table (Hamming error > ${this.maxErrors} bits). Rejected in ${lookupTimeUs}µs.`,
+      };
+    }
+
+    if (hit.isAmbiguous) {
+      return {
+        status: 'ambiguous',
+        matchedId: hit.id,
+        observedHammingDistance: hit.distance,
+        detectedRotation: hit.rotation,
+        detectedReflection: 'none',
+        runnerUpId: null,
+        runnerUpDistance: hit.distance,
+        ambiguityMargin: 0,
+        confidenceScore: 0.2,
+        explanation: `AprilTag 2 Quick Decoder: Ambiguous collision detected at Hamming distance ${hit.distance} (tie between multiple identities). Resolved in ${lookupTimeUs}µs.`,
+      };
+    }
+
+    return {
+      status: 'accepted',
+      matchedId: hit.id,
+      observedHammingDistance: hit.distance,
+      detectedRotation: hit.rotation,
+      detectedReflection: 'none',
+      runnerUpId: null,
+      runnerUpDistance: null,
+      ambiguityMargin: 1,
+      confidenceScore: hit.distance === 0 ? 1.0 : hit.distance === 1 ? 0.9 : 0.75,
+      explanation: `AprilTag 2 O(1) Hash Table Hit: Matched ID #${hit.id} (${hit.rotation}°) with distance ${hit.distance} bits in ${lookupTimeUs}µs.`,
+    };
+  }
+}
+
 export class CodebookValidator {
   /**
    * Validate a codebook against geometric, rotational, reflection and minimum distance criteria.

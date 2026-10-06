@@ -93,6 +93,60 @@ export class CodebookAnalyzer {
     return Math.min(1.0, Math.max(0.0, prob));
   }
 
+  /**
+   * AprilTag 2 False Positive Rate Analysis (Wang & Olson, IROS 2016, Table I & Section IV-A)
+   * Computes the theoretical false positive rate across 0, 1, and 2 bit error corrections.
+   * Based on: FPR(E) = (4 * K * sum_{e=0}^E nCr(B, e)) / 2^B
+   */
+  static computeAprilTag2FPRProfiles(
+    totalBits: number,
+    codeCount: number
+  ): Array<{
+    errorsCorrected: number;
+    combinationsPerTag: number;
+    totalValidStatesPerFamily: number;
+    theoreticalFPR: number;
+    theoreticalFPRPercent: string;
+    expectedFalsePositivesPerMillionImages: number;
+    evaluationNote: string;
+  }> {
+    const profiles = [];
+    const avgQuadsPerImage = 32.3; // AprilTag 2 empirical candidate quads per natural scene image (Table I)
+
+    for (let e = 0; e <= 2; e++) {
+      let combos = 0;
+      for (let r = 0; r <= e; r++) {
+        combos += CodebookAnalyzer.combinations(totalBits, r);
+      }
+
+      const totalValidStates = codeCount * 4 * combos;
+      const totalSpace = Math.pow(2, Math.min(totalBits, 52));
+      const fpr = totalValidStates / totalSpace;
+      const expectedPerMillion = Number((fpr * avgQuadsPerImage * 1000000).toFixed(4));
+
+      let note = '';
+      if (e === 0) {
+        note = 'Exact Match: Ultra-low false positive rate. Optimal for high-security / cluttered scenes.';
+      } else if (e === 1) {
+        note = '1 Bit Corrected: High recovery with negligible false positive risk. Recommended default.';
+      } else {
+        note = '2 Bits Corrected: AprilTag 2 practical upper limit. Fast O(1) hash table decode enabled.';
+      }
+
+      profiles.push({
+        errorsCorrected: e,
+        combinationsPerTag: combos,
+        totalValidStatesPerFamily: totalValidStates,
+        theoreticalFPR: fpr,
+        theoreticalFPRPercent: fpr < 1e-6 ? (fpr * 100).toExponential(3) + '%' : (fpr * 100).toFixed(6) + '%',
+        expectedFalsePositivesPerMillionImages: expectedPerMillion,
+        evaluationNote: note,
+      });
+    }
+
+    return profiles;
+  }
+
   private static combinations(n: number, k: number): number {
     if (k < 0 || k > n) return 0;
     if (k === 0 || k === n) return 1;

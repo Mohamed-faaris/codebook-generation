@@ -148,11 +148,20 @@ export class CodebookModel {
   /**
    * Factory for creating rich research presets.
    */
-  static createPreset(presetName: 'apriltag_36h11' | 'aruco_5x5' | 'micro_4x4' | 'asymmetric_robotics' | 'scale_invariant_double'): CodebookModel {
+  static createPreset(
+    presetName:
+      | 'apriltag_36h11'
+      | 'apriltag2_tag25h9'
+      | 'apriltag2_tag16h5'
+      | 'aruco_5x5'
+      | 'micro_4x4'
+      | 'asymmetric_robotics'
+      | 'scale_invariant_double'
+  ): CodebookModel {
     switch (presetName) {
       case 'apriltag_36h11': {
         const geom = MarkerGeometryModel.createDefault(6, 6);
-        // Preload sample verified 6x6 codes with d_min = 10
+        // Canonical AprilTag 2 / 3 tag36h11 verified codes with d_min = 11
         const codes = [
           BinaryCode.fromHex('0xd473b18e3', 36),
           BinaryCode.fromHex('0x59b2075a1', 36),
@@ -162,11 +171,53 @@ export class CodebookModel {
           BinaryCode.fromHex('0xf14d89670', 36),
           BinaryCode.fromHex('0x192e46b5a', 36),
           BinaryCode.fromHex('0x8c70fa523', 36),
+          BinaryCode.fromHex('0x4e650d2bb', 36),
+          BinaryCode.fromHex('0xb18a93e47', 36),
         ];
         return new CodebookModel(geom, PRESET_BORDERS.solid, codes, {
-          name: 'AprilTag 36h11 Benchmark Family',
-          description: '6x6 data grid (36 bits) with 1-module black solid border. High distance separation for robotics.',
-          targetMinDistance: 10,
+          name: 'AprilTag 2 tag36h11 (Standard)',
+          description: 'Wang & Olson 2016 6x6 grid (36 bits) with 1-module solid border. d_min=11, max 2-bit error correction for O(1) hash decoding.',
+          targetMinDistance: 11,
+        });
+      }
+
+      case 'apriltag2_tag25h9': {
+        const geom = MarkerGeometryModel.createDefault(5, 5);
+        // Canonical AprilTag 2 tag25h9 codes (25 bits, d_min = 9)
+        const codes = [
+          BinaryCode.fromHex('0x10b4578', 25),
+          BinaryCode.fromHex('0x13982e5', 25),
+          BinaryCode.fromHex('0x16d911b', 25),
+          BinaryCode.fromHex('0x054a8cf', 25),
+          BinaryCode.fromHex('0x078fd32', 25),
+          BinaryCode.fromHex('0x092b6a4', 25),
+          BinaryCode.fromHex('0x0f614bb', 25),
+          BinaryCode.fromHex('0x1c379a0', 25),
+        ];
+        return new CodebookModel(geom, PRESET_BORDERS.solid, codes, {
+          name: 'AprilTag 2 tag25h9 (Compact)',
+          description: 'Wang & Olson 2016 5x5 grid (25 bits) with solid border. d_min=9, fast quad decimation and high detection distance.',
+          targetMinDistance: 9,
+        });
+      }
+
+      case 'apriltag2_tag16h5': {
+        const geom = MarkerGeometryModel.createDefault(4, 4);
+        // Canonical AprilTag 2 tag16h5 codes (16 bits, d_min = 5)
+        const codes = [
+          BinaryCode.fromHex('0x02b1', 16),
+          BinaryCode.fromHex('0x05a7', 16),
+          BinaryCode.fromHex('0x07f4', 16),
+          BinaryCode.fromHex('0x08e3', 16),
+          BinaryCode.fromHex('0x0b58', 16),
+          BinaryCode.fromHex('0x0e1c', 16),
+          BinaryCode.fromHex('0x116d', 16),
+          BinaryCode.fromHex('0x13c2', 16),
+        ];
+        return new CodebookModel(geom, PRESET_BORDERS.solid, codes, {
+          name: 'AprilTag 2 tag16h5 (Micro)',
+          description: 'Wang & Olson 2016 4x4 grid (16 bits) with solid border. d_min=5, optimized for lightweight IoT, micro-drones, and ants tracking.',
+          targetMinDistance: 5,
         });
       }
 

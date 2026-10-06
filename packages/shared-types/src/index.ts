@@ -129,6 +129,10 @@ export interface OptimizationConfig {
   enforceReflectionInvariance: boolean;
   enforceCodeBalance: boolean;
   balanceTolerancePercent: number; // e.g. 15% deviation from 50/50
+  /** AprilTag 2 / Wang & Olson 2016: Minimum complexity heuristic to prevent natural scene false positives */
+  enforceAprilTag2Complexity?: boolean;
+  minTransitions?: number;
+  maxRunLength?: number;
   maxIterations: number;
   randomSeed?: number;
   weights: {
@@ -138,6 +142,16 @@ export interface OptimizationConfig {
     codeBalance: number;
     spatialDispersion: number;
   };
+}
+
+export interface AprilTag2FPRProfile {
+  errorsCorrected: number; // 0, 1, or 2
+  combinationsPerTag: number; // sum_{e=0}^E nCr(B, e)
+  totalValidStatesPerFamily: number; // 4 * K * combinationsPerTag
+  theoreticalFPR: number;
+  theoreticalFPRPercent: string;
+  expectedFalsePositivesPerMillionImages: number;
+  evaluationNote: string;
 }
 
 export interface OptimizationProgress {
