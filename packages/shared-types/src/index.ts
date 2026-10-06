@@ -241,3 +241,28 @@ export interface CodebookExportSchema {
     errorCorrectionLimit: number;
   };
 }
+
+export type AprilTag3PixelType = 'w' | 'b' | 'd' | 'x' | 'r';
+
+export type AprilTag3LayoutType = 'standard' | 'classic' | 'circle' | 'custom';
+
+export interface AprilTag3LayoutDefinition {
+  layoutType: AprilTag3LayoutType;
+  name: string;
+  size: number;
+  totalCells: number;
+  numBits: number;
+  borderWidth: number;
+  reversedBorder: boolean;
+  bitLocations: [number, number][]; // [x, y] coordinates
+  layoutGrid: AprilTag3PixelType[][];
+  rawLayoutString?: string;
+}
+
+export interface AprilTag3CExport {
+  headerFile: string;
+  cSourceFile: string;
+  familyName: string;
+  bitCount: number;
+  minHamming: number;
+}

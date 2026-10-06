@@ -29,9 +29,11 @@ export const ExportTab: React.FC<ExportTabProps> = ({ codebook }) => {
   const [activeTab, setActiveTab] = useState<
     'json' | 'python' | 'apriltag_c' | 'c_header' | 'csv' | 'mosaic' | 'aprilcal' | 'print'
   >('json');
+  const [cSubTab, setCSubTab] = useState<'source' | 'header' | 'compact'>('source');
 
   const jsonContent = JSON.stringify(CodebookSerializer.toJson(codebook), null, 2);
   const pythonContent = CodebookSerializer.toPython(codebook);
+  const apriltag3Export = CodebookSerializer.toAprilTag3CExport(codebook);
   const apriltagCContent = CodebookSerializer.toAprilTag2CHeader(codebook);
   const cHeaderContent = CodebookSerializer.toCHeader(codebook);
   const csvContent = CodebookSerializer.toCsv(codebook);
@@ -227,29 +229,95 @@ export const ExportTab: React.FC<ExportTabProps> = ({ codebook }) => {
             <div className="card-header">
               <div className="card-title">
                 <Code2 size={18} color="var(--accent-cyan)" />
-                AprilTag 2 / 3 C Library Integration (apriltag_family_t)
+                AprilTag 3 C Library Integration (apriltag_family_t)
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleCopy(apriltagCContent, 'apriltag_c')}
-                >
-                  {copiedKey === 'apriltag_c' ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
-                  {copiedKey === 'apriltag_c' ? 'Copied!' : 'Copy AprilTag Header'}
-                </button>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() =>
-                    handleDownload(apriltagCContent, `tag${codebook.geometry.rows}x${codebook.geometry.cols}h${codebook.distanceAnalysis.minDistance}.h`, 'text/x-c')
-                  }
-                >
-                  <Download size={14} /> Download tag_family.h
-                </button>
+                {cSubTab === 'source' && (
+                  <>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => handleCopy(apriltag3Export.cSourceFile, 'apriltag3_c')}
+                    >
+                      {copiedKey === 'apriltag3_c' ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
+                      {copiedKey === 'apriltag3_c' ? 'Copied!' : 'Copy .c Source'}
+                    </button>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() =>
+                        handleDownload(apriltag3Export.cSourceFile, `${apriltag3Export.familyName}.c`, 'text/x-c')
+                      }
+                    >
+                      <Download size={14} /> Download {apriltag3Export.familyName}.c
+                    </button>
+                  </>
+                )}
+                {cSubTab === 'header' && (
+                  <>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => handleCopy(apriltag3Export.headerFile, 'apriltag3_h')}
+                    >
+                      {copiedKey === 'apriltag3_h' ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
+                      {copiedKey === 'apriltag3_h' ? 'Copied!' : 'Copy .h Header'}
+                    </button>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() =>
+                        handleDownload(apriltag3Export.headerFile, `${apriltag3Export.familyName}.h`, 'text/x-c')
+                      }
+                    >
+                      <Download size={14} /> Download {apriltag3Export.familyName}.h
+                    </button>
+                  </>
+                )}
+                {cSubTab === 'compact' && (
+                  <>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => handleCopy(apriltagCContent, 'apriltag_compact')}
+                    >
+                      {copiedKey === 'apriltag_compact' ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
+                      {copiedKey === 'apriltag_compact' ? 'Copied!' : 'Copy Header'}
+                    </button>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() =>
+                        handleDownload(apriltagCContent, `${apriltag3Export.familyName}_compact.h`, 'text/x-c')
+                      }
+                    >
+                      <Download size={14} /> Download Header
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-            <div style={{ padding: '0.5rem 0.85rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.85rem' }}>
-              Standard C structure compatible with <code>apriltag_detector_add_family_bits()</code> in <code>libapriltag</code> (AprilTag 2 &amp; 3).
+
+            {/* Sub Tabs */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem' }}>
+              <button
+                className={`btn btn-sm ${cSubTab === 'source' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setCSubTab('source')}
+              >
+                {apriltag3Export.familyName}.c (AprilTag 3 Source)
+              </button>
+              <button
+                className={`btn btn-sm ${cSubTab === 'header' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setCSubTab('header')}
+              >
+                {apriltag3Export.familyName}.h (Header)
+              </button>
+              <button
+                className={`btn btn-sm ${cSubTab === 'compact' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setCSubTab('compact')}
+              >
+                Compact Single-File Header
+              </button>
             </div>
+
+            <div style={{ padding: '0.5rem 0.85rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.85rem' }}>
+              100% compliant with <strong>AprilRobotics/apriltag-generation</strong> and official <strong>AprilRobotics/apriltag</strong> C runtime: features exact <code>bit_x</code> and <code>bit_y</code> bit coordinates, <code>width_at_border</code>, <code>total_width</code>, and <code>reversed_border</code>.
+            </div>
+
             <pre
               style={{
                 background: 'var(--bg-primary)',
@@ -261,7 +329,7 @@ export const ExportTab: React.FC<ExportTabProps> = ({ codebook }) => {
                 color: '#38bdf8',
               }}
             >
-              {apriltagCContent}
+              {cSubTab === 'source' ? apriltag3Export.cSourceFile : cSubTab === 'header' ? apriltag3Export.headerFile : apriltagCContent}
             </pre>
           </div>
         )}

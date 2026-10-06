@@ -9,3 +9,4 @@ export * from './validation/index.js';
 export * from './optimization/index.js';
 export * from './analysis/index.js';
 export * from './codebook/index.js';
+export * from './apriltag3/index.js';

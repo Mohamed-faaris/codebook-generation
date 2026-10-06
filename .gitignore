@@ -5,3 +5,4 @@ dist-test/
 *.log
 .env
 .env.local
+.vercel

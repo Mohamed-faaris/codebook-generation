@@ -1,7 +1,17 @@
-import { CodebookExportSchema } from '@fiducial/shared-types';
-import { CodebookModel } from '@fiducial/core';
+import { CodebookExportSchema, AprilTag3LayoutDefinition, AprilTag3CExport } from '@fiducial/shared-types';
+import { CodebookModel, AprilTag3LayoutEngine } from '@fiducial/core';
 
 export class CodebookSerializer {
+  /**
+   * Export official AprilTag 3 C Library Source & Header files
+   * (Compatible with apriltag_family_t in AprilRobotics/apriltag and AprilRobotics/apriltag-generation).
+   */
+  static toAprilTag3CExport(codebook: CodebookModel, layout?: AprilTag3LayoutDefinition): AprilTag3CExport {
+    const effLayout = layout || AprilTag3LayoutEngine.getStandardLayout(codebook.geometry.rows);
+    const codes = codebook.codes.map((c) => c.toBigInt());
+    return AprilTag3LayoutEngine.generateAprilTag3C(effLayout, codes, codebook.distanceAnalysis.minDistance);
+  }
+
   /**
    * Export to standard JSON format schema.
    */

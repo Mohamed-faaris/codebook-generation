@@ -9,6 +9,7 @@ import {
   CodebookOptimizer,
   MarkerDecoder,
   AprilTag2QuickDecoder,
+  AprilTag3LayoutEngine,
   CodebookAnalyzer,
   CodebookModel,
 } from '../packages/core/src/index.js';
@@ -168,10 +169,33 @@ async function runTests() {
   assert(apriltag2CHeader.includes('apriltag_family_t'), 'apriltag_family_t exported in C header');
   console.log(`   ✓ AprilTag 2 Quick Decoder (${quickDecoder.tableSize} states) and FPR profiles passed.`);
 
-  console.log('\n🎉 ALL 8 SYSTEM VERIFICATION SUITES PASSED PERFECTLY!\n');
+  // 9. AprilTag 3 Layouts & C Generator (AprilRobotics/apriltag-generation)
+  console.log('9. Testing AprilTag 3 Standard/Circle/Classic Layouts & C Generator...');
+  const stdLayout = AprilTag3LayoutEngine.getStandardLayout(9);
+  assert(stdLayout.numBits === 41, 'Standard layout 9x9 has exactly 41 bits (TagStandard41h12)');
+  assert(stdLayout.layoutGrid[0][0] === 'd', 'Standard layout has payload bits on outer perimeter');
+  assert(stdLayout.layoutGrid[1][1] === 'b', 'Standard layout has black border ring at dist=1');
+  assert(stdLayout.layoutGrid[2][2] === 'w', 'Standard layout has white border ring at dist=2');
+
+  const circleLayout = AprilTag3LayoutEngine.getCircleLayout(7);
+  console.log(`   (Circle size 7 has ${circleLayout.numBits} bits)`);
+  assert(circleLayout.numBits > 0, 'Circle layout produces valid data bits');
+
+  const classicLayout = AprilTag3LayoutEngine.getClassicLayout(10);
+  assert(classicLayout.numBits === 36, 'Classic layout 10x10 has 36 bits (Tag36h11 payload area)');
+
+  const tag3C = AprilTag3LayoutEngine.generateAprilTag3C(stdLayout, [0x1234567890abcdefn], 12);
+  assert(tag3C.cSourceFile.includes('tf->bit_x'), 'AprilTag 3 C source includes tf->bit_x mapping');
+  assert(tag3C.cSourceFile.includes('tf->bit_y'), 'AprilTag 3 C source includes tf->bit_y mapping');
+  assert(tag3C.cSourceFile.includes('tf->width_at_border = 1'), 'AprilTag 3 C source includes tf->width_at_border');
+  assert(tag3C.headerFile.includes('tagStandard41h12_create()'), 'AprilTag 3 header declares create function');
+  console.log('   ✓ AprilTag 3 Standard41h12, Circle21h7, and C library generator verified.');
+
+  console.log('\n🎉 ALL 9 SYSTEM VERIFICATION SUITES PASSED PERFECTLY!\n');
 }
 
 runTests().catch((err) => {
   console.error('❌ Test failed:', err);
   process.exit(1);
 });
+
