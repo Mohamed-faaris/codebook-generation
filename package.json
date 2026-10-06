@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "pnpm --filter @fiducial/designer dev",
     "build": "pnpm --filter @fiducial/designer build",
+    "test": "tsx scripts/test-suite.ts",
     "preview": "pnpm --filter @fiducial/designer preview"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
     "typescript": "^5.6.3"
   },
   "pnpm": {
