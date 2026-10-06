@@ -6,3 +6,4 @@ dist-test/
 .env
 .env.local
 .vercel
+.env*
