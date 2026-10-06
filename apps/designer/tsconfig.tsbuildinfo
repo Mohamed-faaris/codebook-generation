@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/Header.tsx","./src/components/Tabs/AnalysisTab.tsx","./src/components/Tabs/ExportTab.tsx","./src/components/Tabs/GeometryBorderTab.tsx","./src/components/Tabs/MarkerInspectorTab.tsx","./src/components/Tabs/OptimizerTab.tsx","./vite.config.ts"],"version":"5.9.3"}

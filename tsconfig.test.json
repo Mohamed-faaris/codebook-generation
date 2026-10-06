@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist-test",
+    "skipLibCheck": true,
+    "strict": false
+  },
+  "include": ["scripts/test-suite.ts", "packages/**/*.ts"]
+}

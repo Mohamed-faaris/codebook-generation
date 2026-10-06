@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@fiducial/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@fiducial/core": ["../../packages/core/src/index.ts"],
+      "@fiducial/renderer": ["../../packages/renderer/src/index.ts"],
+      "@fiducial/serialization": ["../../packages/serialization/src/index.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}

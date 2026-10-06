@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@fiducial/shared-types": ["packages/shared-types/src/index.ts"],
+      "@fiducial/core": ["packages/core/src/index.ts"],
+      "@fiducial/renderer": ["packages/renderer/src/index.ts"],
+      "@fiducial/serialization": ["packages/serialization/src/index.ts"]
+    }
+  }
+}
